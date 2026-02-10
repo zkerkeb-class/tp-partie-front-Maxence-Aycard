@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { getPokemons } from "../../utils/api";
 import PokeCard from "../pokeCard";
 import FilterPanel from "../FilterPanel";
+import SearchBar from "../SearchBar";
 import axios from 'axios';
 
 const PokeList = () => {
@@ -10,15 +11,18 @@ const PokeList = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [filters, setFilters] = useState({});
+    const [searchMode, setSearchMode] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
-        fetchPokemons(currentPage, filters);
-    }, [currentPage, filters]);
+        if (!searchMode) {
+            fetchPokemons(currentPage, filters);
+        }
+    }, [currentPage, filters, searchMode]);
 
     const fetchPokemons = async (page, appliedFilters = {}) => {
         setLoading(true);
         try {
-            // Construire les paramètres avec les filtres
             const params = {
                 page,
                 ...appliedFilters
@@ -34,9 +38,34 @@ const PokeList = () => {
         }
     };
 
+    const handleSearch = async (term) => {
+        setLoading(true);
+        setSearchMode(true);
+        setSearchTerm(term);
+        try {
+            const response = await axios.get(`http://localhost:3000/search/${term}`);
+            setPokemons(response.data);
+        } catch (error) {
+            console.error("Erreur lors de la recherche:", error);
+            setPokemons([]);
+            alert(`Aucun pokémon trouvé avec "${term}"`);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleClearSearch = () => {
+        setSearchMode(false);
+        setSearchTerm('');
+        setCurrentPage(1);
+        fetchPokemons(1, filters);
+    };
+
     const handleFilterChange = (newFilters) => {
         setFilters(newFilters);
-        setCurrentPage(1); // Retour à la page 1 quand on filtre
+        setCurrentPage(1);
+        setSearchMode(false);
+        setSearchTerm('');
     };
 
     const handleNextPage = () => {
@@ -59,12 +88,46 @@ const PokeList = () => {
 
     return (
         <div style={{ padding: '0 20px' }}>
-            {/* Panel de filtres */}
-            <FilterPanel onFilterChange={handleFilterChange} />
+            {/* Barre de recherche */}
+            <SearchBar onSearch={handleSearch} onClear={handleClearSearch} />
+
+            {/* Message si recherche active */}
+            {searchMode && (
+                <div style={{ 
+                    textAlign: 'center', 
+                    marginBottom: '20px',
+                    padding: '15px',
+                    backgroundColor: '#e7f3ff',
+                    borderRadius: '10px',
+                    border: '2px solid #667eea'
+                }}>
+                    <p style={{ margin: 0, fontSize: '1.1rem' }}>
+                        🔍 Résultats de recherche pour "<strong>{searchTerm}</strong>" ({pokemons.length} résultat{pokemons.length > 1 ? 's' : ''})
+                    </p>
+                    <button
+                        onClick={handleClearSearch}
+                        style={{
+                            marginTop: '10px',
+                            padding: '8px 20px',
+                            backgroundColor: '#667eea',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            fontWeight: 'bold'
+                        }}
+                    >
+                        ← Retour à la liste complète
+                    </button>
+                </div>
+            )}
+
+            {/* Panel de filtres (caché en mode recherche) */}
+            {!searchMode && <FilterPanel onFilterChange={handleFilterChange} />}
 
             <h2 style={{ textAlign: 'center', marginBottom: '30px' }}>
-                Liste des Pokémon
-                {Object.keys(filters).length > 0 && (
+                {searchMode ? 'Résultats de recherche' : 'Liste des Pokémon'}
+                {!searchMode && Object.keys(filters).length > 0 && (
                     <span style={{ 
                         fontSize: '0.8em', 
                         color: '#667eea',
@@ -83,10 +146,13 @@ const PokeList = () => {
                     borderRadius: '15px'
                 }}>
                     <p style={{ fontSize: '1.5rem', color: '#666' }}>
-                        😔 Aucun pokémon ne correspond à ces critères
+                        😔 {searchMode 
+                            ? `Aucun pokémon trouvé pour "${searchTerm}"`
+                            : 'Aucun pokémon ne correspond à ces critères'
+                        }
                     </p>
                     <button
-                        onClick={() => handleFilterChange({})}
+                        onClick={searchMode ? handleClearSearch : () => handleFilterChange({})}
                         style={{
                             marginTop: '20px',
                             padding: '12px 25px',
@@ -98,7 +164,7 @@ const PokeList = () => {
                             fontWeight: 'bold'
                         }}
                     >
-                        Réinitialiser les filtres
+                        {searchMode ? '← Retour à la liste' : 'Réinitialiser les filtres'}
                     </button>
                 </div>
             ) : (
@@ -114,8 +180,8 @@ const PokeList = () => {
                         ))}
                     </div>
 
-                    {/* PAGINATION */}
-                    {totalPages > 1 && (
+                    {/* PAGINATION (caché en mode recherche) */}
+                    {!searchMode && totalPages > 1 && (
                         <div style={{ 
                             marginTop: '40px', 
                             marginBottom: '20px',
