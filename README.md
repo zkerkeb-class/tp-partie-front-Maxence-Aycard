@@ -17,6 +17,8 @@ If you are developing a production application, we recommend using TypeScript wi
 
 # 🔥 Pokédex Manager - Projet Full Stack 🔥
 
+Lien de la video : https://youtu.be/UA18VnSz-2A
+
 Application complète de gestion de Pokémons avec backend Node.js/Express/MongoDB et frontend React.
 
 ![React](https://img.shields.io/badge/React-19.2.0-blue)
